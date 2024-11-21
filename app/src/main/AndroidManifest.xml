@@ -24,8 +24,10 @@
 
         <activity android:name=".RegistroActivity"></activity>
 
-        <!-- Declarar la actividad ListaActivity aquí -->
+
         <activity android:name=".ListaActivity"></activity>
+
+        <activity android:name=".DetalleActivity" />
 
     </application>
 

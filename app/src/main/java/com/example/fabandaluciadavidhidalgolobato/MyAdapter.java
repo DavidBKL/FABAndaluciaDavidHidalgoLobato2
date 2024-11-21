@@ -1,81 +1,145 @@
 package com.example.fabandaluciadavidhidalgolobato;
 
+import android.app.Activity;
+import android.content.Context;
+import android.content.Intent;
+import android.view.ActionMode;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
+
+
 import androidx.recyclerview.widget.RecyclerView;
+
 import java.util.ArrayList;
 
 public class MyAdapter extends RecyclerView.Adapter<MyAdapter.MyViewHolder> {
 
-    private ArrayList<String> items;  // Lista de elementos a mostrar
-    private OnItemClickListener listener;  // Listener para manejar los clics
+    private ArrayList<Item> listaItems;
+    private OnItemClickListener onItemClickListener;
+    private Context context;
 
-    // Constructor del adaptador
-    public MyAdapter(ArrayList<String> items, OnItemClickListener listener) {
-        this.items = items;
-        this.listener = listener;
+    public interface OnItemClickListener {
+        void onItemClick(int position);
+
+        void onItemLongClick(int position);
     }
 
-    // Este método infla el layout de cada item
+    public MyAdapter(ArrayList<Item> listaItems, OnItemClickListener onItemClickListener, Context context) {
+        this.listaItems = listaItems;
+        this.onItemClickListener = onItemClickListener;
+        this.context = context;  // Guardamos el contexto
+    }
+
     @Override
     public MyViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
-        // Inflar el layout de un item (puedes personalizar este layout si quieres)
-        View view = LayoutInflater.from(parent.getContext()).inflate(android.R.layout.simple_list_item_1, parent, false);
-        return new MyViewHolder(view);
+        View itemView = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_tarjeta_equipos, parent, false);
+        return new MyViewHolder(itemView);
     }
 
-    // Este método configura el contenido de cada item en el RecyclerView
     @Override
     public void onBindViewHolder(MyViewHolder holder, int position) {
-        // Asignar el texto de cada item a su respectiva vista
-        holder.bind(items.get(position), listener);
+        Item item = listaItems.get(position);
+        holder.textView.setText(item.getTexto());
+        holder.imageView.setImageResource(item.getImagenResId());
     }
 
     @Override
     public int getItemCount() {
-        // Retorna el número de elementos en la lista
-        return items.size();
+        return listaItems.size();
     }
 
-    // ViewHolder para manejar las vistas de cada item
-    public static class MyViewHolder extends RecyclerView.ViewHolder {
-
-        private TextView textView;
+    public class MyViewHolder extends RecyclerView.ViewHolder {
+        TextView textView;
+        ImageView imageView;
 
         public MyViewHolder(View itemView) {
             super(itemView);
-            // Obtener el TextView del item
-            textView = itemView.findViewById(android.R.id.text1);
-        }
+            textView = itemView.findViewById(R.id.textView);
+            imageView = itemView.findViewById(R.id.imageView);
 
-        public void bind(final String item, final OnItemClickListener listener) {
-            // Configurar el texto para este item
-            textView.setText(item);
-
-            // Manejar clic corto
             itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
-                public void onClick(View view) {
-                    listener.onItemClick(getAdapterPosition());
+                public void onClick(View v) {
+
+                    Item item = listaItems.get(getAdapterPosition());
+
+                    // Crear un Intent para abrir DetalleActivity
+                    Intent intent = new Intent(context, DetalleActivity.class);
+                    intent.putExtra("TITULO", item.getTexto());
+                    intent.putExtra("IMAGEN", item.getImagenResId());
+                    intent.putExtra("RESUMEN", item.getResumen());
+
+                    // Iniciar la actividad DetalleActivity
+                    context.startActivity(intent);
+
+
+                    if (onItemClickListener != null) {
+                        onItemClickListener.onItemClick(getAdapterPosition());
+                    }
                 }
             });
 
-            // Manejar clic largo
             itemView.setOnLongClickListener(new View.OnLongClickListener() {
                 @Override
-                public boolean onLongClick(View view) {
-                    listener.onItemLongClick(getAdapterPosition());
-                    return true; // Indicar que se manejó el clic largo
+                public boolean onLongClick(View v) {
+
+                    Activity activity = (Activity) context;
+                    activity.startActionMode(new ActionMode.Callback() {
+                        @Override
+                        public boolean onCreateActionMode(ActionMode mode, Menu menu) {
+                            // Inflar el menú de acción
+                            MenuInflater inflater = activity.getMenuInflater();
+                            inflater.inflate(R.menu.menu_opciones, menu);
+                            mode.setTitle("Acción de ítem");  // Título del ActionMode
+                            return true;
+                        }
+
+                        @Override
+                        public boolean onPrepareActionMode(ActionMode mode, Menu menu) {
+                            return false;
+                        }
+
+                        @Override
+                        public boolean onActionItemClicked(ActionMode mode, MenuItem item) {
+
+                            if (item.getItemId() == R.id.opcion_1) {  // Eliminar ítem
+                                new android.app.AlertDialog.Builder(context)
+                                        .setTitle("Confirmación de eliminación")
+                                        .setMessage("¿Estás seguro de que quieres eliminar este ítem?")
+                                        .setPositiveButton("Sí", (dialog, which) -> {
+                                            // Eliminar el ítem de la lista
+                                            int position = getAdapterPosition();
+                                            if (position != RecyclerView.NO_POSITION) {
+                                                listaItems.remove(position);
+                                                notifyItemRemoved(position); // Notificar al RecyclerView para actualizar la vista
+                                                Toast.makeText(context, "Ítem eliminado", Toast.LENGTH_SHORT).show();
+                                            }
+                                        })
+                                        .setNegativeButton("No", (dialog, which) -> {
+                                            Toast.makeText(context, "Acción cancelada", Toast.LENGTH_SHORT).show();
+                                        })
+                                        .show();
+                                mode.finish();
+                                return true;
+                            }
+                            return false;
+                        }
+
+                        @Override
+                        public void onDestroyActionMode(ActionMode mode) {
+
+                        }
+                    });
+                    return true;
                 }
             });
         }
-    }
-
-    // Interfaz para manejar los clics
-    public interface OnItemClickListener {
-        void onItemClick(int position);       // Para manejar la pulsación corta
-        void onItemLongClick(int position);   // Para manejar la pulsación larga
     }
 }
